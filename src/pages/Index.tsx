@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import * as XLSX from 'xlsx';
 
 interface ExpenseRow {
@@ -36,6 +37,9 @@ const Index = () => {
   const [filterPeriod, setFilterPeriod] = useState<FilterPeriod>('all');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [sheetToRename, setSheetToRename] = useState<string | null>(null);
+  const [newSheetName, setNewSheetName] = useState('');
 
   const activeSheet = sheets.find(s => s.id === activeSheetId)!;
 
@@ -138,6 +142,29 @@ const Index = () => {
     }
   };
 
+  const openRenameDialog = (sheetId: string) => {
+    const sheet = sheets.find(s => s.id === sheetId);
+    if (sheet) {
+      setSheetToRename(sheetId);
+      setNewSheetName(sheet.name);
+      setRenameDialogOpen(true);
+    }
+  };
+
+  const renameSheet = () => {
+    if (!sheetToRename || !newSheetName.trim()) return;
+    
+    setSheets(sheets.map(sheet => 
+      sheet.id === sheetToRename 
+        ? { ...sheet, name: newSheetName.trim() }
+        : sheet
+    ));
+    
+    setRenameDialogOpen(false);
+    setSheetToRename(null);
+    setNewSheetName('');
+  };
+
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
 
@@ -191,10 +218,24 @@ const Index = () => {
                     <TabsTrigger value={sheet.id} className="relative">
                       {sheet.name}
                     </TabsTrigger>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openRenameDialog(sheet.id);
+                      }}
+                      className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Переименовать"
+                    >
+                      <Icon name="Pencil" size={14} className="text-muted-foreground hover:text-primary" />
+                    </button>
                     {sheets.length > 1 && (
                       <button
-                        onClick={() => deleteSheet(sheet.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSheet(sheet.id);
+                        }}
                         className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Удалить"
                       >
                         <Icon name="X" size={14} className="text-muted-foreground hover:text-destructive" />
                       </button>
@@ -412,6 +453,35 @@ const Index = () => {
             ))}
           </Tabs>
         </Card>
+
+        <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Переименовать лист</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Input
+                value={newSheetName}
+                onChange={(e) => setNewSheetName(e.target.value)}
+                placeholder="Введите название листа"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    renameSheet();
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
+                Отмена
+              </Button>
+              <Button onClick={renameSheet} disabled={!newSheetName.trim()}>
+                Сохранить
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
