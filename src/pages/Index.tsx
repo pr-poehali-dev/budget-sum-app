@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import * as XLSX from 'xlsx';
 
 interface ExpenseRow {
   id: string;
@@ -137,6 +138,38 @@ const Index = () => {
     }
   };
 
+  const exportToExcel = () => {
+    const workbook = XLSX.utils.book_new();
+
+    sheets.forEach(sheet => {
+      const dataToExport = sheet.rows.map(row => ({
+        'Дата': row.date,
+        'Сумма (₽)': row.amount,
+        'Причина траты': row.reason
+      }));
+
+      const sheetTotal = sheet.rows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+      dataToExport.push({
+        'Дата': 'ИТОГО:',
+        'Сумма (₽)': sheetTotal,
+        'Причина траты': ''
+      });
+
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      
+      worksheet['!cols'] = [
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 40 }
+      ];
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+    });
+
+    const fileName = `Расходы_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -151,7 +184,7 @@ const Index = () => {
 
         <Card className="shadow-lg animate-scale-in">
           <Tabs value={activeSheetId} onValueChange={setActiveSheetId}>
-            <div className="flex items-center justify-between border-b bg-slate-50/50 px-6 py-3">
+            <div className="flex items-center justify-between border-b bg-slate-50/50 px-6 py-3 flex-wrap gap-3">
               <TabsList className="bg-white">
                 {sheets.map(sheet => (
                   <div key={sheet.id} className="flex items-center group">
@@ -169,10 +202,16 @@ const Index = () => {
                   </div>
                 ))}
               </TabsList>
-              <Button onClick={addSheet} variant="ghost" size="sm" className="gap-2">
-                <Icon name="Plus" size={16} />
-                Новый лист
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={exportToExcel} variant="outline" size="sm" className="gap-2">
+                  <Icon name="Download" size={16} />
+                  Экспорт в Excel
+                </Button>
+                <Button onClick={addSheet} variant="ghost" size="sm" className="gap-2">
+                  <Icon name="Plus" size={16} />
+                  Новый лист
+                </Button>
+              </div>
             </div>
 
             {sheets.map(sheet => (
